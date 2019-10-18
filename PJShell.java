@@ -9,31 +9,23 @@ import java.lang.ProcessBuilder; // https://docs.oracle.com/javase/7/docs/api/ja
 public class PJShell {
 
 
-	private static String working_directory_at_launch;
-		// Save the cwd that the program was launched from. 
-		// Running the 'cd' command will reset the current working directory to 'cwd' that we saved on run.
-
 	private static String current_working_directory;
 		// This will be changed constantly as the user runs the 'cd <args>' command.
-		// 'cd' alone with no args will set this back to the working_directory_at_launch.
-
-	private static boolean isQuit = false;
-		// <todo>
-		// CTRL + D quits application (Point 9)
-		// Maybe have a listener on a different thread that force closes the program when CTRL + D is hit?
-		// 
+		// Running 'cd' with no args will set the directory back to the default directory of the main PJShell process, which can be obtained with System.getProperty("user.dir");
 
 	public static void main(String[] args) throws IOException {
 
-		// Save the cwd to working_directory_at_launch
-		working_directory_at_launch = System.getProperty("user.dir"); // returns the working directory of PJShell.
-		current_working_directory = working_directory_at_launch;
+		// Save the current_working_directory to the default processes' working directory.
+
+		current_working_directory = System.getProperty("user.dir"); // returns the working directory of PJShell.
 
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in)); // User input reader
 
 		System.out.println("Welcome to PJShell. Press CTRL + D to exit.\n");
 
-		while(isQuit == false){
+		while(true){
+
+			System.out.print("PJShell> ");
 
 			/*
 
@@ -50,33 +42,33 @@ public class PJShell {
 
 			String input_string = reader.readLine();
 
-			String[] command_stack = input_string.split(";");
+			// Trigger for user hitting CTRL + D
+			if (input_string == null){
+				System.out.println("Terminating . . .");
+				System.exit(0);
+			}
+
+			String[] command_stack = input_string.trim().split(";");
 
 			// Loop through each command in the stack . . .
 			for (int c_i = 0; c_i < command_stack.length; c_i++){
 
 				String command_str = command_stack[c_i]; // The command + it's parameters
 
-				// <TODO>
-				// 'sanitize' command before parsing it and sending it to the process builder.
-				// eg. removing any leading/ending spaces/tabs.
-				// In javascript this is STRING.trim()
-				// I believe this meets part of Point 2
-
-				String[] command_split = command_str.split(" ", 2); // Returns an array where [0] is the command and [1] is a single string of all the arguments after the command.
+				String[] command_split = command_str.trim().split(" ", 2); // Returns an array where [0] is the command and [1] is a single string of all the arguments after the command.
 
 				// IF command_split.length == 1, a command was passed with no arguments
 				// IF command_split.length == 2, a command was passed (index 0), with arguments (index 1).
 
-				String command = command_split[0]; // <todo> Sanitize here
+				String command = command_split[0].trim();
 
-				if (command == "" || command_split.length == 0){
+				if (command.isEmpty()){
 					// User entered nothing . . .
 					continue; // Move to next command in stack
 				}
 
-				
-				if (command == "cd"){
+
+				if (command.equals("cd")){
 
 					// As per Point 6, we must implement the cd command internally
 					
@@ -84,19 +76,21 @@ public class PJShell {
 
 						// cd with no argument for the path should reset the current working directory;
 
-						current_working_directory = working_directory_at_launch;
+						current_working_directory = System.getProperty("user.dir");
 
 					} else {
 
 						// The getCanonicalPath() method of the File class is extremely convenient (so that you can easily deal with things like "cd ./././dir3/../dir2/../dir1//////../somedir", which is essentially "cd somedir").
-					
-						// It stands to reason that if . . .
-						// The System.getProperty("user.dir") call returns the working directory of PJShell.
-						// . . . exists, then . . .
-						// there must be a System.setProperty("user.dir", OUR_NEW_PATH) to set the new current working directory
 
-						// <TODO>
-						// Set current_working_directory to wherever the arguments command_split[1] take us (relative to the current_working_directory already set!)
+						File new_working_directory = new File(current_working_directory + "/" + command_split[1]);
+
+						if (new_working_directory.exists() == false){
+							System.out.println("Invalid directory " + command_split[1]);
+						} else {
+							current_working_directory = new_working_directory.getCanonicalPath();
+						}
+
+						// ProcessBuilder then runs with this as the directory.
 
 					}
 
@@ -109,31 +103,48 @@ public class PJShell {
 					try {
 
 						// Send our command + args to the Process Builder
-						ProcessBuilder process_builder = new ProcessBuilder(command);
+						ProcessBuilder process_builder;
 
-						// <todo>
+						if (command_split.length > 1){
+							process_builder = new ProcessBuilder(command, command_split[1].trim());
+						} else {
+							process_builder = new ProcessBuilder(command);
+						}
+
 						// Change working directory of process_builder to current_working_directory
 
-						// process_builder.directory(new File(current_working_directory)); // Throws error, idk
+						process_builder.directory(new File(current_working_directory));
 
 						// Start the process builder, running a process
 						final Process process = process_builder.start();
 
-						// Pipe output from the process builder's process to this main process
-						BufferedReader process_buffer = new BufferedReader(
+						// Pipe INPUTSTREAM and ERRORSTREAM from the process builder's process to this main process
+
+						BufferedReader process_buffer_input = new BufferedReader(
 							new InputStreamReader(
 								process.getInputStream()
 							)
 						);
 
+						BufferedReader process_buffer_error = new BufferedReader(
+							new InputStreamReader(
+								process.getErrorStream()
+							)
+						);
+
 						String process_line;
 
-						while ((process_line = process_buffer.readLine()) != null){
+						while ((process_line = process_buffer_input.readLine()) != null){
+							System.out.println(process_line);
+						}
+
+						while ((process_line = process_buffer_error.readLine()) != null){
 							System.out.println(process_line);
 						}
 
 					} catch (Exception e){
-						e.printStackTrace();
+						System.out.println("No such command '" + command + "' exists.");
+						// e.printStackTrace();
 					}
 
 				}
