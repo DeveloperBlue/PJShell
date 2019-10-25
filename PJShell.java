@@ -3,6 +3,10 @@ import java.io.BufferedReader;
 import java.io.IOException; 
 import java.io.InputStreamReader; 
 
+import java.util.ArrayList;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
 import java.io.File;
 import java.lang.ProcessBuilder; // https://docs.oracle.com/javase/7/docs/api/java/lang/ProcessBuilder.html
 
@@ -12,6 +16,10 @@ public class PJShell {
 	private static String current_working_directory;
 		// This will be changed constantly as the user runs the 'cd <args>' command.
 		// Running 'cd' with no args will set the directory back to the default directory of the main PJShell process, which can be obtained with System.getProperty("user.dir");
+
+
+	private static Pattern whitespace_or_wrapped_regex = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
+		// Regex for splitting strings by whitespace, unless they are in a phrase wrapped in quotation marks.
 
 	public static void main(String[] args) throws IOException {
 
@@ -35,8 +43,6 @@ public class PJShell {
 				The input string is split into an array of commands (separated by ;). (Point 7)
 				eg. command_stack = input_string.split(";") // => Returns an array of commands in order. (Point 8)
 				We then loop through this command stack and fire each command using the process builder (Point 3), or handle it internally, like in the case of 'cd' (Point 6)
-
-				We should have a list of accepted commands that each command is checked against. (Point 4)
 
 			*/
 
@@ -67,6 +73,10 @@ public class PJShell {
 					continue; // Move to next command in stack
 				}
 
+				if (command.equals("exit")){
+					System.out.println("Terminating . . .");
+					System.exit(0);
+				}
 
 				if (command.equals("cd")){
 
@@ -80,14 +90,41 @@ public class PJShell {
 
 					} else {
 
-						// The getCanonicalPath() method of the File class is extremely convenient (so that you can easily deal with things like "cd ./././dir3/../dir2/../dir1//////../somedir", which is essentially "cd somedir").
+						String cd_args_string = command_split[1];
 
-						File new_working_directory = new File(current_working_directory + "/" + command_split[1]);
+						// The following splits the arguments string by spaces UNLESS they are wrapped in quotations.
+						ArrayList<String> cd_args = new ArrayList<String>();
+						Matcher regexMatcher = whitespace_or_wrapped_regex.matcher(cd_args_string.trim());
 
-						if (new_working_directory.exists() == false){
-							System.out.println("Invalid directory " + command_split[1]);
+						while (regexMatcher.find()) {
+							if (regexMatcher.group(1) != null) {
+								// Add double-quoted string without the quotes
+								cd_args.add(regexMatcher.group(1));
+							} else if (regexMatcher.group(2) != null) {
+								// Add single-quoted string without the quotes
+								cd_args.add(regexMatcher.group(2));
+							} else {
+								// Add unquoted word
+								cd_args.add(regexMatcher.group());
+							}
+						} 
+
+						if (cd_args.size() > 1){
+
+							System.out.println("cd: called with too many arguments");
+
 						} else {
-							current_working_directory = new_working_directory.getCanonicalPath();
+
+							// The getCanonicalPath() method of the File class is extremely convenient (so that you can easily deal with things like "cd ./././dir3/../dir2/../dir1//////../somedir", which is essentially "cd somedir").
+
+							File new_working_directory = new File(current_working_directory + "/" + cd_args.get(0));
+
+							if (new_working_directory.exists() == false){
+								System.out.println("Invalid directory '" + cd_args.get(0) + "'");
+							} else {
+								current_working_directory = new_working_directory.getCanonicalPath();
+							}
+
 						}
 
 						// ProcessBuilder then runs with this as the directory.
@@ -179,10 +216,6 @@ Important: It's ok to display all the command's stdout and then all the command'
 
 /*
 
-<TODO>
-
-Add your last names :)
-
-Michael Rooplall, Alex, Naglis
+Michael Rooplall, Aleksandar Kamenev, Naglis Bukauskas
 
 */
