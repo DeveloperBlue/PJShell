@@ -17,6 +17,10 @@ public class PJShell {
 		// This will be changed constantly as the user runs the 'cd <args>' command.
 		// Running 'cd' with no args will set the directory back to the default directory of the main PJShell process, which can be obtained with System.getProperty("user.dir");
 
+	public static final String ANSI_WHITE_BACKGROUND = "\u001B[47m";
+	public static final String ANSI_RESET = "\u001B[0m";
+	public static final String ANSI_BLUE = "\u001B[34m";
+		// Used for recoloring the terminal
 
 	private static Pattern whitespace_or_wrapped_regex = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
 		// Regex for splitting strings by whitespace, unless they are in a phrase wrapped in quotation marks.
@@ -29,11 +33,11 @@ public class PJShell {
 
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in)); // User input reader
 
-		System.out.println("Welcome to PJShell. Press CTRL + D to exit.\n");
+		System.out.println(ANSI_WHITE_BACKGROUND + ANSI_BLUE + "Welcome to PJShell. Press CTRL + D to exit." + ANSI_RESET + "\n");
 
 		while(true){
 
-			System.out.print("PJShell> ");
+			System.out.print(ANSI_BLUE + "PJShell> " + ANSI_RESET);
 
 			/*
 
