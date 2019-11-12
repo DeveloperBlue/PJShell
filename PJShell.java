@@ -115,13 +115,14 @@ public class PJShell {
 
 						if (cd_args.size() > 1){
 
-							System.out.println("cd: called with too many arguments");
+							System.out.println("cd: called with too many arguments.\nDirectories with spaces must be wrapped in quotations.");
 
 						} else {
 
 							// The getCanonicalPath() method of the File class is extremely convenient (so that you can easily deal with things like "cd ./././dir3/../dir2/../dir1//////../somedir", which is essentially "cd somedir").
 
-							File new_working_directory = new File(current_working_directory + "/" + cd_args.get(0));
+							// If user-input path begins with '/', change directory relative to root. Otherwise, append to cwd.
+							File new_working_directory = new File((cd_args.get(0).charAt(0) !== '/') ? current_working_directory : "") + "/" + cd_args.get(0);
 
 							if (new_working_directory.exists() == false){
 								System.out.println("Invalid directory '" + cd_args.get(0) + "'");
